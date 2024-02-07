@@ -1,0 +1,58 @@
+AWSTemplateFormatVersion: "2010-09-09"
+## =================== DESCRIPTION =================== ##
+Description: >-
+  AWS S3 Simple Static Website
+  - S3 bucket with public access
+  - http only 
+  - Cloudfront for https
+  - Route 53 for
+
+## =================== RESOURCES =================== ##
+Resources:
+  myS3Bucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: lyc-handson-s3bucket
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+      VersioningConfiguration: # turn versioning on in case we need to rollback newly built files to older version
+        Status: Enabled
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: error.html
+        RoutingRules:
+          - RoutingRuleCondition:
+              HttpErrorCodeReturnedEquals: '404'
+              KeyPrefixEquals: out1/
+            RedirectRule:
+              ReplaceKeyWith: index.html
+    DeletionPolicy: Retain
+  myBucketPolicy:
+    Type: 'AWS::S3::BucketPolicy'
+    Properties:
+      Bucket: !Ref 'myS3Bucket'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action: 's3:GetObject'
+            Resource: !Sub "${myS3BucketForRootDomain.Arn}/*"
+
+Outputs:
+  WebsiteURL:
+    Value: !GetAtt
+      - myS3Bucket
+      - WebsiteURL
+    Description: URL for website hosted on S3
+  S3BucketSecureURL:
+    Value: !Join
+      - ''
+      - - 'https://'
+        - !GetAtt
+          - myS3Bucket
+          - DomainName
+    Description: Name of S3 bucket to hold website content
